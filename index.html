@@ -1,12 +1,13 @@
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Enitan Collection | Home</title>
+    <title>🎀 MARKET EXPRESS| Home</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <style>
-        :root { --orange: #f68b1e; --grey: #f8f9fa; --blue: #007bff; }
+        :root { --orange: #f68b1e; --grey: #f8f9fa; --blue: #007bff; --yellow: #f1c40f; }
         body { font-family: sans-serif; margin: 0; background: var(--grey); padding-bottom: 120px; }
         #loader { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: white; z-index: 9999; display: flex; justify-content: center; align-items: center; }
         .spinner { width: 35px; height: 35px; border: 4px solid #f3f3f3; border-top: 4px solid var(--orange); border-radius: 50%; animation: spin 1s linear infinite; }
@@ -31,12 +32,34 @@
 
         /* Product Grid */
         .container { padding: 0 15px; display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
-        .product-card { background: white; border-radius: 15px; overflow: hidden; box-shadow: 0 4px 10px rgba(0,0,0,0.03); border: 1px solid #eee; }
+        .product-card { background: white; border-radius: 15px; overflow: hidden; box-shadow: 0 4px 10px rgba(0,0,0,0.03); border: 1px solid #eee; display: flex; flex-direction: column; cursor: pointer; }
         .product-card img { width: 100%; height: 130px; object-fit: cover; background: #eee; }
-        .p-info { padding: 8px; }
+        .p-info { padding: 8px; flex-grow: 1; display: flex; flex-direction: column; justify-content: space-between; }
         .p-info b { font-size: 13px; display: block; margin-bottom: 3px; color: #333; }
-        .p-info span { color: var(--orange); font-weight: 800; font-size: 14px; }
+        .p-info span { color: var(--orange); font-weight: 800; font-size: 14px; display: block; }
         .add-btn { width: 100%; background: var(--orange); color: white; border: none; padding: 8px; border-radius: 8px; margin-top: 6px; font-weight: bold; cursor: pointer; font-size: 11px; }
+
+        /* Full Screen Details Modal */
+        .details-modal { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: white; z-index: 2000; display: none; flex-direction: column; overflow-y: auto; }
+        .details-modal.active { display: flex; }
+        .modal-header { padding: 15px; border-bottom: 1px solid #eee; display: flex; align-items: center; justify-content: space-between; position: sticky; top: 0; background: white; z-index: 10; }
+        .modal-body { padding: 15px; }
+
+        /* Multi-Image Gallery */
+        .gallery-main-img { width: 100%; height: 260px; object-fit: cover; border-radius: 15px; background: #eee; }
+        .gallery-thumbs { display: flex; gap: 8px; margin-top: 10px; overflow-x: auto; padding-bottom: 5px; }
+        .thumb-img { width: 60px; height: 60px; object-fit: cover; border-radius: 8px; border: 2px solid transparent; cursor: pointer; }
+        .thumb-img.active { border-color: var(--orange); }
+
+        /* Reviews Box Layout */
+        .modal-review-card { background: #f9f9f9; padding: 12px; border-radius: 10px; margin-bottom: 10px; font-size: 13px; border-left: 4px solid var(--blue); }
+        .review-stars-display { color: var(--yellow); font-size: 11px; margin-bottom: 4px; }
+        
+        .review-input-form { border-top: 1px dashed #ddd; margin-top: 20px; padding-top: 15px; }
+        .rating-stars-input { color: #ccc; font-size: 20px; margin: 10px 0; display: flex; gap: 6px; }
+        .rating-stars-input i { cursor: pointer; }
+        .rating-stars-input i.active { color: var(--yellow); }
+        .modal-input { width: 100%; padding: 12px; border: 1px solid #ddd; border-radius: 8px; margin-bottom: 10px; outline: none; box-sizing: border-box; }
 
         .footer-links { text-align: center; padding: 30px 15px; background: white; margin-top: 20px; border-top: 1px solid #eee; }
         .footer-links a { color: #888; text-decoration: none; font-size: 13px; margin: 0 10px; }
@@ -52,7 +75,7 @@
 <div id="loader"><div class="spinner"></div></div>
 
 <div class="top-header">
-    <div class="logo">ENITAN🎀COLLECTIONS.</div>
+    <div class="logo">🎀 MARKET EXPRESS.</div>
     <div class="account-trigger" onclick="checkAccount()"><i class="fas fa-user-circle"></i></div>
 </div>
 
@@ -74,10 +97,45 @@
 
 <div class="container" id="productGrid"></div>
 
+<div class="details-modal" id="pDetailsModal">
+    <div class="modal-header">
+        <button onclick="closeDetailsModal()" style="background:none; border:none; font-size:22px; cursor:pointer;"><i class="fas fa-arrow-left"></i></button>
+        <b id="modalTitle" style="font-size:16px;">Product Details</b>
+        <div></div>
+    </div>
+    <div class="modal-body">
+        <img src="" id="modalMainImg" class="gallery-main-img">
+        <div class="gallery-thumbs" id="modalThumbs"></div>
+
+        <h2 id="modalPrice" style="color:var(--orange); margin: 15px 0 5px 0; font-size:24px;"></h2>
+        <p id="modalMeta" style="color:#666; font-size:13px; margin-bottom:20px;"></p>
+
+        <button class="add-btn" id="modalAddToCartBtn" style="padding:15px; font-size:14px; margin-bottom:25px;">ADD TO BASKET</button>
+
+        <h3>Customer Reviews</h3>
+        <div id="modalReviewsContainer"></div>
+
+        <div class="review-input-form">
+            <h4>Leave a Review</h4>
+            <div class="rating-stars-input">
+                <i class="fas fa-star" onclick="setDetailsStarRating(1)"></i>
+                <i class="fas fa-star" onclick="setDetailsStarRating(2)"></i>
+                <i class="fas fa-star" onclick="setDetailsStarRating(3)"></i>
+                <i class="fas fa-star" onclick="setDetailsStarRating(4)"></i>
+                <i class="fas fa-star" onclick="setDetailsStarRating(5)"></i>
+            </div>
+            <input type="hidden" id="detailsRatingVal" value="0">
+            <input type="text" id="detailsRevName" class="modal-input" placeholder="Enter your name">
+            <input type="text" id="detailsRevComment" class="modal-input" placeholder="What do you think about this item?">
+            <button class="add-btn" id="submitReviewBtn" style="background:var(--blue);">Submit Review</button>
+        </div>
+    </div>
+</div>
+
 <div class="footer-links">
     <a href="about.html">About Us</a>
     <a href="privacy.html">Privacy Policy</a>
-    <p style="font-size: 11px; color: #bbb; margin-top: 10px;">&copy; 2026 Enitan Collections</p>
+    <p style="font-size: 11px; color: #bbb; margin-top: 10px;">&copy; 2026 MARKET EXPRESS Collections</p>
 </div>
 
 <div class="nav-bar">
@@ -89,7 +147,7 @@
 
 <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
-    import { getFirestore, collection, query, onSnapshot, orderBy, where } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+    import { getFirestore, collection, query, onSnapshot, orderBy, addDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 
     const firebaseConfig = { 
         apiKey: "AIzaSyC1w8tUDW6XTfkPceprjj1kJed9CM5r6YA", 
@@ -99,14 +157,10 @@
     const app = initializeApp(firebaseConfig);
     const db = getFirestore(app);
     let allProducts = [];
+    let currentActiveProductId = "";
+    let currentActiveProductName = "";
 
-    // UPDATED QUERY: Added 'where("status", "==", "live")'
-    const q = query(
-        collection(db, "products"), 
-        where("status", "==", "live"), 
-        orderBy("timestamp", "desc")
-    );
-
+    const q = query(collection(db, "products"), orderBy("timestamp", "desc"));
     onSnapshot(q, (snapshot) => {
         allProducts = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
         renderProducts(allProducts);
@@ -115,16 +169,117 @@
 
     function renderProducts(list) {
         const grid = document.getElementById('productGrid');
-        grid.innerHTML = list.map(item => `
-            <div class="product-card">
-                <img src="${item.image}" alt="${item.name}">
-                <div class="p-info">
-                    <b>${item.name}</b>
-                    <span>₦${Number(item.price).toLocaleString()}</span>
-                    <button class="add-btn" onclick="addToCart('${item.name}', '${item.price}', '${item.image}')">ADD TO CART</button>
-                </div>
-            </div>`).join('');
+        grid.innerHTML = list.map(item => {
+            const coverImg = item.images && item.images.length > 0 ? item.images[0] : item.image;
+            return `
+                <div class="product-card" onclick="openDetailsModal('${item.id}')">
+                    <img src="${coverImg}" alt="${item.name}">
+                    <div class="p-info">
+                        <b>${item.name}</b>
+                        <span>₦${Number(item.price).toLocaleString()}</span>
+                        <button class="add-btn" onclick="event.stopPropagation(); addToCart('${item.name.replace(/'/g, "\\'")}', '${item.price}', '${coverImg}')">ADD TO CART</button>
+                    </div>
+                </div>`;
+        }).join('');
     }
+
+    // Modal Operations View Engine
+    window.openDetailsModal = (id) => {
+        const item = allProducts.find(p => p.id === id);
+        if(!item) return;
+
+        currentActiveProductId = id;
+        currentActiveProductName = item.name;
+
+        document.getElementById('modalTitle').innerText = item.name;
+        document.getElementById('modalPrice').innerText = `₦${Number(item.price).toLocaleString()}`;
+        document.getElementById('modalMeta').innerText = `Category: ${item.category} | Available Sizes: ${item.sizes || 'N/A'} | Colors: ${item.colors || 'N/A'}`;
+        
+        // Handle image galleries cleanly
+        const imageList = item.images && item.images.length > 0 ? item.images : [item.image];
+        const mainImg = document.getElementById('modalMainImg');
+        mainImg.src = imageList[0];
+
+        const thumbsContainer = document.getElementById('modalThumbs');
+        thumbsContainer.innerHTML = imageList.map((url, i) => `
+            <img src="${url}" class="thumb-img ${i===0?'active':''}" onclick="changeMainDetailsImage('${url}', this)">
+        `).join('');
+
+        // Double bypass block to catch shopping cart action seamlessly inside popups
+        document.getElementById('modalAddToCartBtn').onclick = () => {
+            addToCart(item.name, item.price, imageList[0]);
+        };
+
+        // Stream reviews only linked specifically to this selected item
+        const revQuery = query(collection(db, "reviews"), orderBy("timestamp", "desc"));
+        onSnapshot(revQuery, (snapshot) => {
+            const reviews = snapshot.docs.map(doc => doc.data()).filter(r => r.productId === id);
+            const container = document.getElementById('modalReviewsContainer');
+            
+            if(reviews.length === 0) {
+                container.innerHTML = `<p style='color:#888; font-size:13px;'>No reviews yet for this product. Be the first!</p>`;
+                return;
+            }
+            container.innerHTML = reviews.map(r => {
+                let stars = "";
+                for(let i=0; i<5; i++) { stars += i < r.rating ? "★" : "☆"; }
+                return `
+                    <div class="modal-review-card">
+                        <div class="review-stars-display">${stars}</div>
+                        <strong>${r.customerName}</strong>: "${r.comment}"
+                    </div>`;
+            }).join('');
+        });
+
+        document.getElementById('pDetailsModal').classList.add('active');
+    };
+
+    window.closeDetailsModal = () => {
+        document.getElementById('pDetailsModal').classList.remove('active');
+        window.setDetailsStarRating(0);
+        document.getElementById('detailsRevName').value = "";
+        document.getElementById('detailsRevComment').value = "";
+    };
+
+    window.changeMainDetailsImage = (url, thumbElement) => {
+        document.getElementById('modalMainImg').src = url;
+        document.querySelectorAll('.thumb-img').forEach(t => t.classList.remove('active'));
+        thumbElement.classList.add('active');
+    };
+
+    window.setDetailsStarRating = (rating) => {
+        document.getElementById('detailsRatingVal').value = rating;
+        const stars = document.querySelectorAll('.rating-stars-input i');
+        stars.forEach((star, index) => {
+            if (index < rating) star.classList.add('active');
+            else star.classList.remove('active');
+        });
+    };
+
+    document.getElementById('submitReviewBtn').onclick = async () => {
+        const name = document.getElementById('detailsRevName').value.trim();
+        const comment = document.getElementById('detailsRevComment').value.trim();
+        const rating = parseInt(document.getElementById('detailsRatingVal').value);
+
+        if(!name || !comment || rating === 0) return alert("Please type your name, review text, and choose a star rating!");
+
+        try {
+            await addDoc(collection(db, "reviews"), {
+                productId: currentActiveProductId,
+                productName: currentActiveProductName,
+                customerName: name,
+                comment: comment,
+                rating: rating,
+                timestamp: serverTimestamp()
+            });
+            alert("Review saved!");
+            document.getElementById('detailsRevName').value = "";
+            document.getElementById('detailsRevComment').value = "";
+            window.setDetailsStarRating(0);
+        } catch(e) {
+            alert("Error sending review.");
+        }
+    };
 
     window.handleSearch = () => {
         const term = document.getElementById('searchBox').value.toLowerCase();
