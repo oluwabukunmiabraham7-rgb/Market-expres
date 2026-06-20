@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -61,6 +60,13 @@
         .rating-stars-input i.active { color: var(--yellow); }
         .modal-input { width: 100%; padding: 12px; border: 1px solid #ddd; border-radius: 8px; margin-bottom: 10px; outline: none; box-sizing: border-box; }
 
+        /* NEW: LIVE JUMIA-STYLE POPUP NOTICE ANNOUNCEMENT STYLING */
+        .promo-modal-overlay { position: fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.8); z-index:99999; display:none; justify-content:center; align-items:center; padding:20px; box-sizing:border-box; }
+        .promo-modal-overlay.active { display:flex; }
+        .promo-card { background:transparent; width:100%; max-width:380px; position:relative; text-align:center; }
+        .promo-card img { width:100%; height:auto; border-radius:20px; box-shadow:0 10px 40px rgba(0,0,0,0.5); object-fit:contain; max-height: 70vh; }
+        .promo-close-btn { position:absolute; top:-45px; right:10px; background:white; color:#333; width:35px; height:35px; border-radius:50%; border:none; display:flex; justify-content:center; align-items:center; font-size:16px; font-weight:bold; cursor:pointer; box-shadow:0 2px 10px rgba(0,0,0,0.2); }
+
         .footer-links { text-align: center; padding: 30px 15px; background: white; margin-top: 20px; border-top: 1px solid #eee; }
         .footer-links a { color: #888; text-decoration: none; font-size: 13px; margin: 0 10px; }
 
@@ -73,6 +79,13 @@
 <body>
 
 <div id="loader"><div class="spinner"></div></div>
+
+<div class="promo-modal-overlay" id="promoNoticeModal">
+    <div class="promo-card">
+        <button class="promo-close-btn" onclick="closePromoNotice()"><i class="fas fa-times"></i></button>
+        <img src="" id="promoNoticeImg" alt="Store Announcement Notice Notice">
+    </div>
+</div>
 
 <div class="top-header">
     <div class="logo">🎀 MARKET EXPRESS.</div>
@@ -106,12 +119,9 @@
     <div class="modal-body">
         <img src="" id="modalMainImg" class="gallery-main-img">
         <div class="gallery-thumbs" id="modalThumbs"></div>
-
         <h2 id="modalPrice" style="color:var(--orange); margin: 15px 0 5px 0; font-size:24px;"></h2>
         <p id="modalMeta" style="color:#666; font-size:13px; margin-bottom:20px;"></p>
-
         <button class="add-btn" id="modalAddToCartBtn" style="padding:15px; font-size:14px; margin-bottom:25px;">ADD TO BASKET</button>
-
         <h3>Customer Reviews</h3>
         <div id="modalReviewsContainer"></div>
 
@@ -133,8 +143,7 @@
 </div>
 
 <div class="footer-links">
-    <a href="about.html">About Us</a>
-    <a href="privacy.html">Privacy Policy</a>
+    <a href="about.html">About Us</a><a href="privacy.html">Privacy Policy</a>
     <p style="font-size: 11px; color: #bbb; margin-top: 10px;">&copy; 2026 MARKET EXPRESS Collections</p>
 </div>
 
@@ -147,7 +156,7 @@
 
 <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
-    import { getFirestore, collection, query, onSnapshot, orderBy, addDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+    import { getFirestore, collection, query, onSnapshot, orderBy, addDoc, doc, getDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 
     const firebaseConfig = { 
         apiKey: "AIzaSyC1w8tUDW6XTfkPceprjj1kJed9CM5r6YA", 
@@ -156,9 +165,28 @@
     };
     const app = initializeApp(firebaseConfig);
     const db = getFirestore(app);
-    let allProducts = [];
-    let currentActiveProductId = "";
-    let currentActiveProductName = "";
+    let allProducts = []; let currentActiveProductId = ""; let currentActiveProductName = "";
+
+    // RUN ANNOUNCEMENT CHECK ON LAUNCH ENGINE
+    async function checkStoreAnnouncementNotice() {
+        try {
+            const noticeSnap = await getDoc(doc(db, "announcements", "welcome_banner"));
+            if(noticeSnap.exists()) {
+                const noticeData = noticeSnap.data();
+                // If it is active and has an image URL link attached
+                if(noticeData.status === "active" && noticeData.imageUrl) {
+                    document.getElementById('promoNoticeImg').src = noticeData.imageUrl;
+                    // Trigger graphic visibility box
+                    document.getElementById('promoNoticeModal').classList.add('active');
+                }
+            }
+        } catch(e) { console.log("Notice check skipped:", e); }
+    }
+    checkStoreAnnouncementNotice();
+
+    window.closePromoNotice = () => {
+        document.getElementById('promoNoticeModal').classList.remove('active');
+    };
 
     const q = query(collection(db, "products"), orderBy("timestamp", "desc"));
     onSnapshot(q, (snapshot) => {
@@ -171,140 +199,53 @@
         const grid = document.getElementById('productGrid');
         grid.innerHTML = list.map(item => {
             const coverImg = item.images && item.images.length > 0 ? item.images[0] : item.image;
-            return `
-                <div class="product-card" onclick="openDetailsModal('${item.id}')">
+            return `<div class="product-card" onclick="openDetailsModal('${item.id}')">
                     <img src="${coverImg}" alt="${item.name}">
-                    <div class="p-info">
-                        <b>${item.name}</b>
-                        <span>₦${Number(item.price).toLocaleString()}</span>
-                        <button class="add-btn" onclick="event.stopPropagation(); addToCart('${item.name.replace(/'/g, "\\'")}', '${item.price}', '${coverImg}')">ADD TO CART</button>
-                    </div>
-                </div>`;
+                    <div class="p-info"><b>${item.name}</b><span>₦${Number(item.price).toLocaleString()}</span>
+                    <button class="add-btn" onclick="event.stopPropagation(); addToCart('${item.name.replace(/'/g, "\\'")}', '${item.price}', '${coverImg}')">ADD TO CART</button></div></div>`;
         }).join('');
     }
 
-    // Modal Operations View Engine
     window.openDetailsModal = (id) => {
-        const item = allProducts.find(p => p.id === id);
-        if(!item) return;
-
-        currentActiveProductId = id;
-        currentActiveProductName = item.name;
-
+        const item = allProducts.find(p => p.id === id); if(!item) return;
+        currentActiveProductId = id; currentActiveProductName = item.name;
         document.getElementById('modalTitle').innerText = item.name;
         document.getElementById('modalPrice').innerText = `₦${Number(item.price).toLocaleString()}`;
-        document.getElementById('modalMeta').innerText = `Category: ${item.category} | Available Sizes: ${item.sizes || 'N/A'} | Colors: ${item.colors || 'N/A'}`;
+        document.getElementById('modalMeta').innerText = `Category: ${item.category} | Sizes: ${item.sizes || 'N/A'} | Colors: ${item.colors || 'N/A'}`;
         
-        // Handle image galleries cleanly
         const imageList = item.images && item.images.length > 0 ? item.images : [item.image];
-        const mainImg = document.getElementById('modalMainImg');
-        mainImg.src = imageList[0];
+        document.getElementById('modalMainImg').src = imageList[0];
+        document.getElementById('modalThumbs').innerHTML = imageList.map((url, i) => `<img src="${url}" class="thumb-img ${i===0?'active':''}" onclick="changeMainDetailsImage('${url}', this)">`).join('');
+        document.getElementById('modalAddToCartBtn').onclick = () => { addToCart(item.name, item.price, imageList[0]); };
 
-        const thumbsContainer = document.getElementById('modalThumbs');
-        thumbsContainer.innerHTML = imageList.map((url, i) => `
-            <img src="${url}" class="thumb-img ${i===0?'active':''}" onclick="changeMainDetailsImage('${url}', this)">
-        `).join('');
-
-        // Double bypass block to catch shopping cart action seamlessly inside popups
-        document.getElementById('modalAddToCartBtn').onclick = () => {
-            addToCart(item.name, item.price, imageList[0]);
-        };
-
-        // Stream reviews only linked specifically to this selected item
         const revQuery = query(collection(db, "reviews"), orderBy("timestamp", "desc"));
         onSnapshot(revQuery, (snapshot) => {
             const reviews = snapshot.docs.map(doc => doc.data()).filter(r => r.productId === id);
             const container = document.getElementById('modalReviewsContainer');
-            
-            if(reviews.length === 0) {
-                container.innerHTML = `<p style='color:#888; font-size:13px;'>No reviews yet for this product. Be the first!</p>`;
-                return;
-            }
-            container.innerHTML = reviews.map(r => {
-                let stars = "";
-                for(let i=0; i<5; i++) { stars += i < r.rating ? "★" : "☆"; }
-                return `
-                    <div class="modal-review-card">
-                        <div class="review-stars-display">${stars}</div>
-                        <strong>${r.customerName}</strong>: "${r.comment}"
-                    </div>`;
-            }).join('');
+            if(reviews.length === 0) { container.innerHTML = `<p style='color:#888; font-size:13px;'>No reviews yet.</p>`; return; }
+            container.innerHTML = reviews.map(r => { let stars = ""; for(let i=0; i<5; i++) { stars += i < r.rating ? "★" : "☆"; } return `<div class="modal-review-card"><div class="review-stars-display">${stars}</div><strong>${r.customerName}</strong>: "${r.comment}"</div>`; }).join('');
         });
-
         document.getElementById('pDetailsModal').classList.add('active');
     };
 
-    window.closeDetailsModal = () => {
-        document.getElementById('pDetailsModal').classList.remove('active');
-        window.setDetailsStarRating(0);
-        document.getElementById('detailsRevName').value = "";
-        document.getElementById('detailsRevComment').value = "";
-    };
-
-    window.changeMainDetailsImage = (url, thumbElement) => {
-        document.getElementById('modalMainImg').src = url;
-        document.querySelectorAll('.thumb-img').forEach(t => t.classList.remove('active'));
-        thumbElement.classList.add('active');
-    };
-
-    window.setDetailsStarRating = (rating) => {
-        document.getElementById('detailsRatingVal').value = rating;
-        const stars = document.querySelectorAll('.rating-stars-input i');
-        stars.forEach((star, index) => {
-            if (index < rating) star.classList.add('active');
-            else star.classList.remove('active');
-        });
-    };
+    window.closeDetailsModal = () => { document.getElementById('pDetailsModal').classList.remove('active'); window.setDetailsStarRating(0); document.getElementById('detailsRevName').value = ""; document.getElementById('detailsRevComment').value = ""; };
+    window.changeMainDetailsImage = (url, thumbElement) => { document.getElementById('modalMainImg').src = url; document.querySelectorAll('.thumb-img').forEach(t => t.classList.remove('active')); thumbElement.classList.add('active'); };
+    window.setDetailsStarRating = (rating) => { document.getElementById('detailsRatingVal').value = rating; const stars = document.querySelectorAll('.rating-stars-input i'); stars.forEach((star, index) => { if (index < rating) star.classList.add('active'); else star.classList.remove('active'); }); };
 
     document.getElementById('submitReviewBtn').onclick = async () => {
-        const name = document.getElementById('detailsRevName').value.trim();
-        const comment = document.getElementById('detailsRevComment').value.trim();
-        const rating = parseInt(document.getElementById('detailsRatingVal').value);
-
-        if(!name || !comment || rating === 0) return alert("Please type your name, review text, and choose a star rating!");
-
+        const name = document.getElementById('detailsRevName').value.trim(); const comment = document.getElementById('detailsRevComment').value.trim(); const rating = parseInt(document.getElementById('detailsRatingVal').value);
+        if(!name || !comment || rating === 0) return alert("Please fill fields and select stars!");
         try {
-            await addDoc(collection(db, "reviews"), {
-                productId: currentActiveProductId,
-                productName: currentActiveProductName,
-                customerName: name,
-                comment: comment,
-                rating: rating,
-                timestamp: serverTimestamp()
-            });
-            alert("Review saved!");
-            document.getElementById('detailsRevName').value = "";
-            document.getElementById('detailsRevComment').value = "";
-            window.setDetailsStarRating(0);
-        } catch(e) {
-            alert("Error sending review.");
-        }
+            await addDoc(collection(db, "reviews"), { productId: currentActiveProductId, productName: currentActiveProductName, customerName: name, comment, rating, timestamp: serverTimestamp() });
+            alert("Review saved!"); document.getElementById('detailsRevName').value = ""; document.getElementById('detailsRevComment').value = ""; window.setDetailsStarRating(0);
+        } catch(e) { alert("Error sending review."); }
     };
 
-    window.handleSearch = () => {
-        const term = document.getElementById('searchBox').value.toLowerCase();
-        const filtered = allProducts.filter(p => p.name.toLowerCase().includes(term));
-        renderProducts(filtered);
-    };
-
-    window.filterByCat = (cat, el) => {
-        document.querySelectorAll('.chip').forEach(c => c.classList.remove('active'));
-        el.classList.add('active');
-        const filtered = cat === 'All' ? allProducts : allProducts.filter(p => p.category === cat);
-        renderProducts(filtered);
-    };
-
-    window.checkAccount = () => {
-        const user = localStorage.getItem('enitan_user');
-        window.location.href = user ? 'profile.html' : 'auth.html';
-    };
-
-    window.addToCart = (name, price, image) => {
-        let cart = JSON.parse(localStorage.getItem('enitan_cart')) || [];
-        cart.push({ name, price, image });
-        localStorage.setItem('enitan_cart', JSON.stringify(cart));
-        alert(name + " added to cart!");
-    };
+    window.handleSearch = () => { const term = document.getElementById('searchBox').value.toLowerCase(); const filtered = allProducts.filter(p => p.name.toLowerCase().includes(term)); renderProducts(filtered); };
+    window.filterByCat = (cat, el) => { document.querySelectorAll('.chip').forEach(c => c.classList.remove('active')); el.classList.add('active'); const filtered = cat === 'All' ? allProducts : allProducts.filter(p => p.category === cat); renderProducts(filtered); };
+    window.checkAccount = () => { const user = localStorage.getItem('enitan_user'); window.location.href = user ? 'profile.html' : 'auth.html'; };
+    window.addToCart = (name, price, image) => { let cart = JSON.parse(localStorage.getItem('enitan_cart')) || []; cart.push({ name, price, image }); localStorage.setItem('enitan_cart', JSON.stringify(cart)); alert(name + " added to cart!"); };
 </script>
 </body>
 </html>
+
